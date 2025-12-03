@@ -240,5 +240,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 **Author:** Gerardo Gandara | Senior Data Scientist  
 **Contact:** gerardo.gandara@gmail.com
+
 https://www.linkedin.com/in/gerardo-gandara/
-**Last Updated:** December 2024
+
+**Last Updated:** December 2025
