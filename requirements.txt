@@ -4,12 +4,11 @@
 
 # Core Data Science
 pandas>=1.5.0
+numpy>=1.23.0
 
 # Visualization
 plotly>=5.13.0
+matplotlib>=3.6.0
 
 # Web Application
 streamlit>=1.28.0
-
-# For styled dataframes
-matplotlib>=3.6.0
