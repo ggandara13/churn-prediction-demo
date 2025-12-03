@@ -568,6 +568,7 @@ def run_genetic_algorithm(
 # MODEL TRAINING FUNCTIONS
 # =============================================================================
 
+@st.cache_data(show_spinner=False)
 def train_models_advanced(
     _df: pd.DataFrame,
     use_llm_features: bool = True,
