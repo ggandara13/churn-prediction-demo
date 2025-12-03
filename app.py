@@ -15,15 +15,11 @@ Version: 3.0.0 (Optimized for instant demo)
 # IMPORTS
 # =============================================================================
 
-import json
 import warnings
-import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.preprocessing import StandardScaler
 
 warnings.filterwarnings('ignore')
 
@@ -38,7 +34,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-LOGO_URL = "https://1000logos.net/wp-content/uploads/2021/04/ADP-logo.png"
+LOGO_URL = "https://e7.pngegg.com/pngimages/802/829/png-clipart-adp-llc-logo-human-resource-management-organization-company-adp-logo-text-trademark.png"
 
 # =============================================================================
 # CONSTANTS
@@ -58,17 +54,6 @@ ROOT_CAUSE_DISTRIBUTION = {
 }
 
 LLM_FEATURES = ['ticket_sentiment', 'frustration_level', 'churn_intent', 'has_support_complaint', 'has_billing_complaint']
-
-ALL_FEATURES = [
-    'tenure_months', 'monthly_spend', 'lifetime_value', 'is_enterprise',
-    'has_partner_account', 'has_subsidiary', 'has_phone_support',
-    'has_multiple_products', 'has_security_addon', 'has_backup_service',
-    'has_premium_support', 'has_addon_1', 'has_addon_2', 'paperless_billing',
-    'contract_Monthly', 'contract_Annual', 'tier_Standard', 'tier_Premium',
-    'payment_ACH', 'payment_AutoPay',
-    'ticket_sentiment', 'frustration_level', 'churn_intent',
-    'has_support_complaint', 'has_billing_complaint'
-]
 
 # =============================================================================
 # PRE-COMPUTED RESULTS (from local training)
@@ -109,84 +94,6 @@ PRECOMPUTED = {
         "total_churners": 374
     }
 }
-
-
-# =============================================================================
-# DATA LOADING (for Live Prediction only)
-# =============================================================================
-
-@st.cache_data
-def load_data():
-    """Load and prepare data for live prediction."""
-    try:
-        df = pd.read_csv('Telco_Customer_Churn.csv')
-    except FileNotFoundError:
-        return None, False
-    
-    df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce').fillna(0)
-    
-    # Minimal preprocessing
-    df_simple = pd.DataFrame({
-        'tenure_months': df['tenure'],
-        'monthly_spend': df['MonthlyCharges'],
-        'lifetime_value': df['TotalCharges'],
-        'is_enterprise': df['SeniorCitizen'],
-        'has_partner_account': (df['Partner'] == 'Yes').astype(int),
-        'has_subsidiary': (df['Dependents'] == 'Yes').astype(int),
-        'has_phone_support': (df['PhoneService'] == 'Yes').astype(int),
-        'has_multiple_products': (df['MultipleLines'] == 'Yes').astype(int),
-        'has_security_addon': (df['OnlineSecurity'] == 'Yes').astype(int),
-        'has_backup_service': (df['OnlineBackup'] == 'Yes').astype(int),
-        'has_premium_support': (df['TechSupport'] == 'Yes').astype(int),
-        'has_addon_1': (df['StreamingTV'] == 'Yes').astype(int),
-        'has_addon_2': (df['StreamingMovies'] == 'Yes').astype(int),
-        'paperless_billing': (df['PaperlessBilling'] == 'Yes').astype(int),
-        'contract_Monthly': (df['Contract'] == 'Month-to-month').astype(int),
-        'contract_Annual': (df['Contract'] == 'One year').astype(int),
-        'tier_Standard': (df['InternetService'] == 'DSL').astype(int),
-        'tier_Premium': (df['InternetService'] == 'Fiber optic').astype(int),
-        'payment_ACH': (df['PaymentMethod'] == 'Electronic check').astype(int),
-        'payment_AutoPay': (df['PaymentMethod'] == 'Bank transfer (automatic)').astype(int),
-        'churn': (df['Churn'] == 'Yes').astype(int)
-    })
-    
-    # Add simulated LLM features
-    np.random.seed(42)
-    n = len(df_simple)
-    is_churner = df_simple['churn'].values.astype(bool)
-    
-    sentiment = np.random.normal(0.2, 0.25, n)
-    sentiment[is_churner] = np.random.normal(-0.3, 0.3, is_churner.sum())
-    df_simple['ticket_sentiment'] = np.clip(sentiment, -1, 1)
-    
-    frustration = np.random.choice([0, 1, 1, 2], n)
-    frustration[is_churner] = np.random.choice([2, 3, 4, 5], is_churner.sum())
-    df_simple['frustration_level'] = frustration
-    
-    intent = np.zeros(n)
-    intent[is_churner] = np.random.choice([1, 2, 3], is_churner.sum())
-    df_simple['churn_intent'] = intent.astype(int)
-    
-    df_simple['has_support_complaint'] = np.random.binomial(1, np.where(is_churner, 0.27, 0.08))
-    df_simple['has_billing_complaint'] = np.random.binomial(1, np.where(is_churner, 0.17, 0.05))
-    
-    return df_simple, True
-
-
-@st.cache_resource
-def train_live_prediction_model(df):
-    """Train a single lightweight model for live prediction only."""
-    X = df[ALL_FEATURES].fillna(0)
-    y = df['churn']
-    
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-    
-    # Fast, lightweight model
-    model = GradientBoostingClassifier(n_estimators=30, max_depth=3, random_state=42)
-    model.fit(X_scaled, y)
-    
-    return model, scaler
 
 
 # =============================================================================
@@ -471,8 +378,8 @@ def page_business_impact():
     col4.metric("Net ROI", f"${net:,}", f"${revenue:,} - ${cost_total:,}")
 
 
-def page_live_prediction(model, scaler):
-    """Live prediction page."""
+def page_live_prediction():
+    """Live prediction page using formula-based scoring."""
     st.header("🎮 Live Churn Prediction")
     
     st.caption("💡 *In B2B: Premium tier & Premium support = lower churn risk*")
@@ -481,7 +388,7 @@ def page_live_prediction(model, scaler):
     
     with c1:
         st.subheader("👤 Customer")
-        tenure = st.slider("Tenure (months)", 0, 72, 6)
+        tenure = st.slider("Tenure (months)", 0, 72, 12)
         monthly = st.slider("Monthly Spend ($)", 20, 120, 80)
         contract = st.selectbox("Contract", ["Monthly", "Annual", "Multi-Year"])
     
@@ -493,47 +400,74 @@ def page_live_prediction(model, scaler):
     
     with c3:
         st.subheader("🤖 LLM Features (from tickets)")
-        sentiment = st.slider("Ticket Sentiment", -1.0, 1.0, -0.3, 0.1)
-        frustration = st.slider("Frustration Level", 0, 5, 3)
-        intent = st.slider("Churn Intent", 0, 3, 1)
-        supp_complaint = st.checkbox("Support Complaint", value=True)
+        sentiment = st.slider("Ticket Sentiment", -1.0, 1.0, 0.0, 0.1)
+        frustration = st.slider("Frustration Level", 0, 5, 2)
+        intent = st.slider("Churn Intent", 0, 3, 0)
+        supp_complaint = st.checkbox("Support Complaint", value=False)
         bill_complaint = st.checkbox("Billing Complaint")
     
-    # B2B logic inversion
-    if tier == "Premium":
-        tier_standard_val, tier_premium_val = 0, 0
-        security_val, backup_val = 1, 1
-    elif tier == "Standard":
-        tier_standard_val, tier_premium_val = 1, 0
-        security_val, backup_val = 1, 0
+    # ==========================================================================
+    # FORMULA-BASED RISK SCORING (based on feature importance from trained model)
+    # ==========================================================================
+    # Base risk starts at 25% (baseline churn rate)
+    risk_score = 25.0
+    
+    # LLM Features (highest impact - 75% of model importance)
+    # Frustration level: 0-5 scale, weight = 43%
+    risk_score += frustration * 8  # 0-40 points
+    
+    # Churn intent: 0-3 scale, weight = 17%
+    risk_score += intent * 10  # 0-30 points
+    
+    # Ticket sentiment: -1 to 1, weight = 16%
+    risk_score += (1 - sentiment) * 10  # 0-20 points (negative sentiment = higher risk)
+    
+    # Support complaint: binary, weight = 4%
+    if supp_complaint:
+        risk_score += 8
+    
+    # Billing complaint: binary, weight = 3%
+    if bill_complaint:
+        risk_score += 6
+    
+    # Contract type (weight = 5%)
+    if contract == "Monthly":
+        risk_score += 10
+    elif contract == "Annual":
+        risk_score -= 5
+    else:  # Multi-Year
+        risk_score -= 15
+    
+    # Tenure (weight = 3%)
+    if tenure < 6:
+        risk_score += 10
+    elif tenure < 12:
+        risk_score += 5
+    elif tenure > 24:
+        risk_score -= 10
+    elif tenure > 48:
+        risk_score -= 15
+    
+    # Service tier (B2B logic: Premium = lower risk)
+    if tier == "Basic":
+        risk_score += 8
+    elif tier == "Premium":
+        risk_score -= 12
+    
+    # Premium support (B2B logic: reduces risk)
+    if premium_support:
+        risk_score -= 15
     else:
-        tier_standard_val, tier_premium_val = 0, 1
-        security_val, backup_val = 0, 0
+        risk_score += 5
     
-    premium_support_val = 0 if premium_support else 1
-    sentiment_adjusted = min(1, max(-1, sentiment + (0.3 if premium_support else 0)))
+    # Payment method
+    if payment == "ACH":
+        risk_score += 3
+    elif payment == "Auto-Pay":
+        risk_score -= 5
     
-    inp = {
-        'tenure_months': tenure, 'monthly_spend': monthly, 'lifetime_value': tenure * monthly,
-        'is_enterprise': 0, 'has_partner_account': 0, 'has_subsidiary': 0,
-        'has_phone_support': 1, 'has_multiple_products': 0,
-        'has_security_addon': security_val, 'has_backup_service': backup_val,
-        'has_premium_support': premium_support_val, 'has_addon_1': 0, 'has_addon_2': 0,
-        'paperless_billing': 1,
-        'contract_Monthly': 1 if contract == "Monthly" else 0,
-        'contract_Annual': 1 if contract == "Annual" else 0,
-        'tier_Standard': tier_standard_val, 'tier_Premium': tier_premium_val,
-        'payment_ACH': 1 if payment == "ACH" else 0,
-        'payment_AutoPay': 1 if payment == "Auto-Pay" else 0,
-        'ticket_sentiment': sentiment_adjusted, 'frustration_level': frustration,
-        'churn_intent': intent, 'has_support_complaint': int(supp_complaint),
-        'has_billing_complaint': int(bill_complaint)
-    }
-    
-    input_df = pd.DataFrame([inp])[ALL_FEATURES]
-    input_scaled = scaler.transform(input_df)
-    prob = model.predict_proba(input_scaled)[0][1]
-    risk = int(prob * 100)
+    # Clamp to 0-100
+    risk = max(0, min(100, int(risk_score)))
     
     st.markdown("---")
     c1, c2 = st.columns([1, 2])
@@ -614,15 +548,6 @@ def main():
     """Main application."""
     render_header()
     
-    # Load data and train live prediction model (fast, cached)
-    df, loaded = load_data()
-    
-    if not loaded:
-        st.error("⚠️ Dataset not found! Please add `Telco_Customer_Churn.csv` to the repository.")
-        st.stop()
-    
-    model, scaler = train_live_prediction_model(df)
-    
     page = render_sidebar()
     
     if page == "🏠 Overview":
@@ -634,7 +559,7 @@ def main():
     elif page == "📈 Business Impact":
         page_business_impact()
     elif page == "🎮 Live Prediction":
-        page_live_prediction(model, scaler)
+        page_live_prediction()
 
 
 if __name__ == "__main__":
