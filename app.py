@@ -34,7 +34,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-LOGO_URL = "https://e7.pngegg.com/pngimages/802/829/png-clipart-adp-llc-logo-human-resource-management-organization-company-adp-logo-text-trademark.png"
+LOGO_URL = "https://1000logos.net/wp-content/uploads/2021/04/ADP-logo.png"
 
 # =============================================================================
 # CONSTANTS
